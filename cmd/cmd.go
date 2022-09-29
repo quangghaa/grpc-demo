@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	api "github.com/quangghaa/grpc-demo/server/register"
-	pingService "github.com/quangghaa/grpc-demo/service/ping"
-	registerService "github.com/quangghaa/grpc-demo/service/register"
+	api "github.com/quangghaa/grpc-demo/server/demo"
+	"github.com/quangghaa/grpc-demo/service/demo"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +18,8 @@ var PingCmd = &cobra.Command{
 	Short: "Start ping service",
 	Run: func(cmd *cobra.Command, args []string) {
 		port, _ := cmd.Flags().GetInt("port")
-		pingService.Start(port)
+		ps := demo.NewPingService(nil)
+		ps.Start(port)
 	},
 }
 
@@ -27,8 +27,8 @@ var RegisterCmd = &cobra.Command{
 	Use:   "register",
 	Short: "Start register service",
 	Run: func(cmd *cobra.Command, args []string) {
-		port, _ := cmd.Flags().GetInt("port")
-		registerService.Start(port)
+		// port, _ := cmd.Flags().GetInt("port")
+		// demo.Start(port)
 	},
 }
 
@@ -42,12 +42,10 @@ var ApiCmd = &cobra.Command{
 }
 
 func init() {
-	PingCmd.Flags().Int("port", 8001, "port")
-	RegisterCmd.Flags().Int("port", 8002, "port")
+	PingCmd.Flags().Int("port", 8002, "port")
 	ApiCmd.Flags().Int("port", 8080, "port")
 
 	//add command
 	RootCmd.AddCommand(PingCmd)
-	RootCmd.AddCommand(RegisterCmd)
 	RootCmd.AddCommand(ApiCmd)
 }

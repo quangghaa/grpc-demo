@@ -1,4 +1,4 @@
-package register
+package demo
 
 import (
 	"context"
@@ -15,6 +15,8 @@ import (
 
 type RegisterService struct {
 	pb.UnimplementedRegisterServer
+	Router  *runtime.ServeMux
+	Context context.Context
 }
 
 var (
@@ -22,39 +24,41 @@ var (
 	PING_SERVICE_ENDPOINT = "localhost:8001"
 )
 
-func NewRegisterService() *RegisterService {
-	return &RegisterService{}
+func NewRegisterService(router *runtime.ServeMux, ctx context.Context) *RegisterService {
+	return &RegisterService{
+		Router:  router,
+		Context: ctx,
+	}
 }
 
-func (*RegisterService) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
+func (r *RegisterService) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
 
-	fmt.Println("Start register")
+	fmt.Println("IN REGISTER SERVICE >>>>>>>>.")
 	endpoint := in.Host + ":" + in.Port
-	conn, err := grpc.Dial(
-		// context.Background(),
-		endpoint,
-		// grpc.WithBlock(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		fmt.Println("Logg")
-		log.Fatalln("Failed to dial server: ", err)
-	}
-	fmt.Println("Pass conn")
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 
-	gwmux := runtime.NewServeMux()
-	// Register Ping service
-	err = pingPb.RegisterPingHandler(ctx, gwmux, conn)
+	fmt.Println(endpoint)
+	fmt.Printf("Third: %v\n", r)
+
+	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
-		log.Fatalln("Failed to register gateway: ", err)
+		return nil, err
 	}
 
-	fmt.Println("Pass regis")
+	err = pingPb.RegisterPingHandler(r.Context, r.Router, conn)
+
+	// err := registerPb.RegisterRegisterHandlerFromEndpoint(r.Context, r.Router, endpoint, opts)
+	if err != nil {
+		fmt.Printf("CHECK error: %s\n", err)
+		// log.Fatalln("Failed to dial server: ", err)
+	}
 
 	return &pb.RegisterReply{Message: in.Host + ":" + in.Port}, nil
 }
 
-func Start(port int) error {
+func (r *RegisterService) Start(port int) error {
+	fmt.Printf("Fourd: %v\n", r)
+	fmt.Println("Start REGISTER serivce ...")
 	// Create a listener on TCP port
 	strPort := fmt.Sprint(port)
 	lis, err := net.Listen("tcp", ":"+strPort)

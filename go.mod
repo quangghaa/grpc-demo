@@ -10,8 +10,11 @@ require (
 	google.golang.org/protobuf v1.28.1
 )
 
+require github.com/felixge/httpsnoop v1.0.1 // indirect
+
 require (
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/gorilla/handlers v1.5.1
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect

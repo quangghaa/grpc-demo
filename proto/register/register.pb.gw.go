@@ -119,7 +119,7 @@ func RegisterRegisterHandlerFromEndpoint(ctx context.Context, mux *runtime.Serve
 			}
 		}()
 	}()
-
+	
 	return RegisterRegisterHandler(ctx, mux, conn)
 }
 

@@ -1,4 +1,4 @@
-package ping
+package demo
 
 import (
 	"context"
@@ -8,18 +8,22 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pb "github.com/quangghaa/grpc-demo/proto/ping"
 	"google.golang.org/grpc"
 )
 
 type PingService struct {
 	pb.UnimplementedPingServer
+	router *runtime.ServeMux
 }
 
 var ()
 
-func NewPingService() *PingService {
-	return &PingService{}
+func NewPingService(router *runtime.ServeMux) *PingService {
+	return &PingService{
+		router: router,
+	}
 }
 
 func (*PingService) PingMe(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
@@ -36,7 +40,8 @@ func (*PingService) SlowPing(ctx context.Context, in *pb.PingRequest) (*pb.PingR
 	return &pb.PingReply{Message: "SLOW PONG " + in.Delay + " seconds"}, nil
 }
 
-func Start(port int) error {
+func (*PingService) Start(port int) error {
+	fmt.Println("Start PING serivce ...")
 	// Create a listener on TCP port
 	strPort := fmt.Sprint(port)
 	lis, err := net.Listen("tcp", ":"+strPort)
