@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package register;
+
+option go_package = "./register";
+
+import "google/api/annotations.proto";
+
+// The Register service definition
+service Register {
+    // Register
+    rpc Register(RegisterRequest) returns (RegisterReply) {
+        option (google.api.http) = {
+            post: "/register"
+            body: "*"
+        };
+    }
+}
+
+// The request message containing the user's name
+message RegisterRequest {
+    string host = 1;
+    string port = 2;
+}
+
+// The response message containing the greetings
+message RegisterReply {
+    string message = 1;
+}

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package ping;
+
+option go_package = "./ping";
+
+import "google/api/annotations.proto";
+
+// The Ping service definition
+service Ping {
+    // Ping
+    rpc PingMe(PingRequest) returns (PingReply) {
+        option (google.api.http) = {
+            get: "/ping"
+          };
+    }
+    // Slow ping delay (second)
+    rpc SlowPing(PingRequest) returns (PingReply) {
+        option (google.api.http) = {
+            get: "/ping/{delay}"
+        };
+    }
+}
+
+// The request message containing the user's name
+message PingRequest {
+    string delay = 1;
+}
+
+// The response message containing the greetings
+message PingReply {
+    string message = 1;
+}
