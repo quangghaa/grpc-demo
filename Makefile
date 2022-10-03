@@ -7,5 +7,11 @@ register:
 api:
 	go run main.go api
 
+check:
+	go run main.go check
+	
+scan:
+	go run main.go scan
+
 test-stuff: 
 	go run ./test/main.go

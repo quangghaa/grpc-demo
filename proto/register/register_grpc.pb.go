@@ -24,6 +24,10 @@ const _ = grpc.SupportPackageIsVersion7
 type RegisterClient interface {
 	// Register
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error)
+	// Check connection pool
+	CheckConnection(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error)
+	// ScanConnection
+	ScanConnection(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error)
 }
 
 type registerClient struct {
@@ -43,12 +47,34 @@ func (c *registerClient) Register(ctx context.Context, in *RegisterRequest, opts
 	return out, nil
 }
 
+func (c *registerClient) CheckConnection(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error) {
+	out := new(RegisterReply)
+	err := c.cc.Invoke(ctx, "/register.Register/CheckConnection", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *registerClient) ScanConnection(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error) {
+	out := new(RegisterReply)
+	err := c.cc.Invoke(ctx, "/register.Register/ScanConnection", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RegisterServer is the server API for Register service.
 // All implementations must embed UnimplementedRegisterServer
 // for forward compatibility
 type RegisterServer interface {
 	// Register
 	Register(context.Context, *RegisterRequest) (*RegisterReply, error)
+	// Check connection pool
+	CheckConnection(context.Context, *RegisterRequest) (*RegisterReply, error)
+	// ScanConnection
+	ScanConnection(context.Context, *RegisterRequest) (*RegisterReply, error)
 	mustEmbedUnimplementedRegisterServer()
 }
 
@@ -58,6 +84,12 @@ type UnimplementedRegisterServer struct {
 
 func (UnimplementedRegisterServer) Register(context.Context, *RegisterRequest) (*RegisterReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedRegisterServer) CheckConnection(context.Context, *RegisterRequest) (*RegisterReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckConnection not implemented")
+}
+func (UnimplementedRegisterServer) ScanConnection(context.Context, *RegisterRequest) (*RegisterReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ScanConnection not implemented")
 }
 func (UnimplementedRegisterServer) mustEmbedUnimplementedRegisterServer() {}
 
@@ -90,6 +122,42 @@ func _Register_Register_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Register_CheckConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RegisterServer).CheckConnection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/register.Register/CheckConnection",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RegisterServer).CheckConnection(ctx, req.(*RegisterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Register_ScanConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RegisterServer).ScanConnection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/register.Register/ScanConnection",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RegisterServer).ScanConnection(ctx, req.(*RegisterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Register_ServiceDesc is the grpc.ServiceDesc for Register service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +168,14 @@ var Register_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Register",
 			Handler:    _Register_Register_Handler,
+		},
+		{
+			MethodName: "CheckConnection",
+			Handler:    _Register_CheckConnection_Handler,
+		},
+		{
+			MethodName: "ScanConnection",
+			Handler:    _Register_ScanConnection_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

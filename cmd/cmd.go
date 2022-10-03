@@ -18,7 +18,7 @@ var PingCmd = &cobra.Command{
 	Short: "Start ping service",
 	Run: func(cmd *cobra.Command, args []string) {
 		port, _ := cmd.Flags().GetInt("port")
-		ps := demo.NewPingService(nil)
+		ps := demo.NewPingService()
 		ps.Start(port)
 	},
 }
@@ -41,6 +41,24 @@ var ApiCmd = &cobra.Command{
 	},
 }
 
+var CheckCmd = &cobra.Command{
+	Use:   "check",
+	Short: "Check current connections",
+	Run: func(cmd *cobra.Command, args []string) {
+		// connObj := demo.NewConnectionService()
+		// connObj.Check()
+	},
+}
+
+var ScanCmd = &cobra.Command{
+	Use:   "scan",
+	Short: "Scan and remove connections",
+	Run: func(cmd *cobra.Command, args []string) {
+		// connObj := demo.NewConnectionService()
+		// connObj.Scan()
+	},
+}
+
 func init() {
 	PingCmd.Flags().Int("port", 8002, "port")
 	ApiCmd.Flags().Int("port", 8080, "port")
@@ -48,4 +66,6 @@ func init() {
 	//add command
 	RootCmd.AddCommand(PingCmd)
 	RootCmd.AddCommand(ApiCmd)
+	RootCmd.AddCommand(CheckCmd)
+	RootCmd.AddCommand(ScanCmd)
 }

@@ -8,25 +8,22 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pb "github.com/quangghaa/grpc-demo/proto/ping"
 	"google.golang.org/grpc"
 )
 
 type PingService struct {
 	pb.UnimplementedPingServer
-	router *runtime.ServeMux
 }
 
 var ()
 
-func NewPingService(router *runtime.ServeMux) *PingService {
-	return &PingService{
-		router: router,
-	}
+func NewPingService() *PingService {
+	return &PingService{}
 }
 
 func (*PingService) PingMe(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
+	fmt.Println("Third ctx: ", ctx)
 	return &pb.PingReply{Message: "PONG"}, nil
 }
 

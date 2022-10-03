@@ -29,15 +29,17 @@ func httpHandlers(listener net.Listener) error {
 
 	gw_router := runtime.NewServeMux()
 
-	ps := demo.NewPingService(gw_router)
-	rs := demo.NewRegisterService(gw_router, ctx)
+	cs := demo.NewConnectionService("1")
+
+	ps := demo.NewPingService()
+	rs := demo.NewRegisterService()
 	fmt.Printf("First: %v\n", rs.Router)
 	go func() {
 		rs.Start(8001)
 	}()
 
-	demoService := demo.NewDemoService(ps, rs)
-	demoService.Register(ctx, gw_router)
+	demoService := demo.NewDemoService(ps, rs, cs)
+	demoService.Register(ctx, gw_router, cs)
 
 	server := &http.Server{
 		Handler: gw_router,
@@ -64,33 +66,4 @@ func GatewayServer(port int) {
 		log.Fatal(err)
 	}
 
-	// ctx := context.Background()
-
-	// connR, err := grpc.DialContext(
-	// 	ctx,
-	// 	REGISTER_SERVICE_ENDPOINT,
-	// 	grpc.WithBlock(),
-	// 	grpc.WithTransportCredentials(insecure.NewCredentials()),
-	// )
-	// if err != nil {
-	// 	log.Fatalln("Failed to dial REGISTER server: ", err)
-	// }
-
-	// gwmux := runtime.NewServeMux()
-
-	// err = registerPb.RegisterRegisterHandler(ctx, gwmux, connR)
-	// if err != nil {
-	// 	log.Fatalln("Failed to register REGISTER gateway: ", err)
-	// }
-
-	// gwServer := &http.Server{
-	// 	Addr:    "localhost:" + fmt.Sprint(port),
-	// 	Handler: gwmux,
-	// }
-
-	// log.Println("Serving gRPC-Gateway on http://localhost:" + fmt.Sprint(port))
-	// // go func() {
-	// // 	log.Fatalln(gwServer.ListenAndServe())
-	// // }()
-	// gwServer.ListenAndServe()
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pingPb "github.com/quangghaa/grpc-demo/proto/ping"
@@ -17,6 +18,8 @@ type RegisterService struct {
 	pb.UnimplementedRegisterServer
 	Router  *runtime.ServeMux
 	Context context.Context
+
+	ConnService *ConnectionService
 }
 
 var (
@@ -24,40 +27,78 @@ var (
 	PING_SERVICE_ENDPOINT = "localhost:8001"
 )
 
-func NewRegisterService(router *runtime.ServeMux, ctx context.Context) *RegisterService {
-	return &RegisterService{
-		Router:  router,
-		Context: ctx,
-	}
+func NewRegisterService() *RegisterService {
+	return &RegisterService{}
 }
 
 func (r *RegisterService) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
-
-	fmt.Println("IN REGISTER SERVICE >>>>>>>>.")
 	endpoint := in.Host + ":" + in.Port
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-
-	fmt.Println(endpoint)
-	fmt.Printf("Third: %v\n", r)
+	opts := []grpc.DialOption{
+		grpc.WithBlock(), // Block when calling Dial until the connection is really established
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
 
 	conn, err := grpc.Dial(endpoint, opts...)
+
+	fmt.Println("First pool id: ", r.ConnService.Id)
+	fmt.Println("Push connection to pool ===>")
+	r.ConnService.Add(conn)
+
 	if err != nil {
 		return nil, err
 	}
 
 	err = pingPb.RegisterPingHandler(r.Context, r.Router, conn)
-
-	// err := registerPb.RegisterRegisterHandlerFromEndpoint(r.Context, r.Router, endpoint, opts)
 	if err != nil {
-		fmt.Printf("CHECK error: %s\n", err)
-		// log.Fatalln("Failed to dial server: ", err)
+		log.Fatalln("Failed to dial server: ", err)
 	}
 
-	return &pb.RegisterReply{Message: in.Host + ":" + in.Port}, nil
+	return &pb.RegisterReply{Message: in.Host + ":" + in.Port, Conns: []string{}}, nil
+}
+
+func (r *RegisterService) CheckConnection(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
+	conns := []string{}
+	for _, conn := range r.ConnService.ConnPool {
+		conns = append(conns, fmt.Sprint(conn.GetState()))
+	}
+
+	if len(conns) == 0 {
+		return &pb.RegisterReply{Message: "Empty", Conns: conns}, nil
+	}
+
+	return &pb.RegisterReply{Message: "OK", Conns: conns}, nil
+}
+
+func (c *RegisterService) ScanConnection(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
+	fmt.Println("Start scanning ...")
+	go func() {
+		count := 1
+		for {
+			fmt.Println("Scan >> ", count)
+			fmt.Println("Check length >> ", len(c.ConnService.ConnPool))
+			count++
+			if len(c.ConnService.ConnPool) > 1 {
+				for i := 0; i < len(c.ConnService.ConnPool)-1; i++ {
+					err := c.ConnService.ConnPool[i].Close()
+					if err != nil {
+						fmt.Println("Error while close connection: ", err)
+					} else {
+						fmt.Println("Close connection:")
+						fmt.Println(c.ConnService.ConnPool[i])
+					}
+				}
+			}
+			l := len(c.ConnService.ConnPool) - 1
+			c.ConnService.ConnPool = c.ConnService.ConnPool[l:]
+
+			time.Sleep(10 * time.Second)
+
+		}
+	}()
+	return &pb.RegisterReply{Message: "OK"}, nil
 }
 
 func (r *RegisterService) Start(port int) error {
-	fmt.Printf("Fourd: %v\n", r)
 	fmt.Println("Start REGISTER serivce ...")
 	// Create a listener on TCP port
 	strPort := fmt.Sprint(port)
@@ -69,7 +110,7 @@ func (r *RegisterService) Start(port int) error {
 	// Create a gRPC server object
 	s := grpc.NewServer()
 	// Attach the Register service to the server
-	pb.RegisterRegisterServer(s, &RegisterService{})
+	pb.RegisterRegisterServer(s, r)
 
 	// Serve gRPC server
 	log.Printf("Serving gRPC on %s\n", strPort)
