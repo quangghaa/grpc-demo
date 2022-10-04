@@ -46,7 +46,7 @@ func (r *RegisterService) Register(ctx context.Context, in *pb.RegisterRequest) 
 
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
-		fmt.Println("Cannot Dial to endpoint: %s ", err.Error())
+		fmt.Println("Cannot Dial to endpoint: ", err.Error())
 		return &pb.RegisterReply{Message: "Cannot dial", Conns: []string{}}, nil
 	}
 
@@ -59,15 +59,52 @@ func (r *RegisterService) Register(ctx context.Context, in *pb.RegisterRequest) 
 	connObj := &pb.Connection{
 		ServiceName: "Ping",
 		Endpoint:    endpoint,
+		Status:      1,
 	}
 
 	_, err = r.handler.Connection_Create(connObj)
 	if err != nil {
-		fmt.Println("Cannot save to db: %s ", err.Error())
+		fmt.Println("Cannot save to db: ", err.Error())
 	}
 
 	// Save to array, to remove later
-	r.ConnService.Add(conn)
+	connInfo := &ConnectionInfo{
+		Endpoint: endpoint,
+		Conn:     conn,
+	}
+	r.ConnService.Add(connInfo)
+	if len(r.ConnService.ConnPool) > 1 {
+		fmt.Println("Old connection will be remove after 10seconds")
+	}
+	time.AfterFunc(10*time.Second, func() {
+		if len(r.ConnService.ConnPool) > 1 {
+			for i := 0; i < len(r.ConnService.ConnPool)-1; i++ {
+				err := r.ConnService.ConnPool[i].Conn.Close()
+				if err != nil {
+					fmt.Println("Error while close connection: ", err)
+				} else {
+					fmt.Println("Close connection: ", r.ConnService.ConnPool[i].Endpoint)
+					fmt.Println(r.ConnService.ConnPool[i].Conn)
+
+					// Update status in db
+					t := &pb.Connection{
+						ServiceName: "Ping",
+						Endpoint:    r.ConnService.ConnPool[i].Endpoint,
+					}
+					_, err = r.handler.Connection_Edit(t)
+					if err != nil {
+						fmt.Println("Cannot update connection status in db: ", err.Error())
+					}
+				}
+			}
+
+			// Remove conn from Connection pool
+			l := len(r.ConnService.ConnPool) - 1
+			r.ConnService.ConnPool = r.ConnService.ConnPool[l:]
+			fmt.Println("Connectino length after remove: ", len(r.ConnService.ConnPool))
+
+		}
+	})
 
 	return &pb.RegisterReply{Message: in.Host + ":" + in.Port, Conns: []string{}}, nil
 }
@@ -75,7 +112,7 @@ func (r *RegisterService) Register(ctx context.Context, in *pb.RegisterRequest) 
 func (r *RegisterService) CheckConnection(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
 	conns := []string{}
 	for _, conn := range r.ConnService.ConnPool {
-		conns = append(conns, fmt.Sprint(conn.GetState()))
+		conns = append(conns, fmt.Sprint(conn))
 	}
 
 	if len(conns) == 0 {
@@ -93,7 +130,7 @@ func (c *RegisterService) ScanConnection(ctx context.Context, in *pb.RegisterReq
 			count++
 			if len(c.ConnService.ConnPool) > 1 {
 				for i := 0; i < len(c.ConnService.ConnPool)-1; i++ {
-					err := c.ConnService.ConnPool[i].Close()
+					err := c.ConnService.ConnPool[i].Conn.Close()
 					if err != nil {
 						fmt.Println("Error while close connection: ", err)
 					} else {

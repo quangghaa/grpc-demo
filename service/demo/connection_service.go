@@ -7,9 +7,14 @@ import (
 	"google.golang.org/grpc"
 )
 
+type ConnectionInfo struct {
+	Endpoint string
+	Conn     *grpc.ClientConn
+}
+
 type ConnectionService struct {
 	Id       string
-	ConnPool []*grpc.ClientConn
+	ConnPool []*ConnectionInfo
 }
 
 func NewConnectionService(id string) *ConnectionService {
@@ -18,8 +23,7 @@ func NewConnectionService(id string) *ConnectionService {
 	}
 }
 
-func (c *ConnectionService) Add(conn *grpc.ClientConn) error {
-	fmt.Println("Second pool id: ", c.Id)
+func (c *ConnectionService) Add(conn *ConnectionInfo) error {
 	c.ConnPool = append(c.ConnPool, conn)
 	fmt.Println("Add success: ", len(c.ConnPool))
 	return nil

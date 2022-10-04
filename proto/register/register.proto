@@ -42,7 +42,8 @@ message Connection {
     uint64 id = 1;
     string service_name = 2;
     string endpoint = 3;
-    string create_at = 4;
+    uint32 status = 4;
+    string create_at = 5;
 }
 
 // The response message containing the greetings

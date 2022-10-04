@@ -6,11 +6,17 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/quangghaa/grpc-demo/db"
+	pingPb "github.com/quangghaa/grpc-demo/proto/ping"
+	pb "github.com/quangghaa/grpc-demo/proto/register"
 	"github.com/quangghaa/grpc-demo/service/demo"
+	connectionService "github.com/quangghaa/grpc-demo/service/demo"
 	"github.com/quangghaa/grpc-demo/service/demo/handler"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -22,6 +28,43 @@ var (
 type register struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
+}
+
+func firstLoadEndpoint(ctx context.Context, router *runtime.ServeMux, h *handler.ApiHandler, cs *connectionService.ConnectionService) error {
+	res, err := h.Connection_Get_Alive()
+	if err != nil {
+		return err
+	}
+
+	m := new(pb.Connection)
+	if err := res.UnmarshalTo(m); err != nil {
+		fmt.Println("Error while unmarshal: ", err)
+		return err
+	}
+
+	opts := []grpc.DialOption{
+		grpc.WithBlock(), // Block when calling Dial until the connection is really established
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	conn, err := grpc.Dial(m.Endpoint, opts...)
+	if err != nil {
+		fmt.Println("Cannot Dial to endpoint: ", err.Error())
+	}
+
+	err = pingPb.RegisterPingHandler(ctx, router, conn)
+	if err != nil {
+		log.Fatalln("failed to dial server: ", err)
+	}
+
+	// Save to array, to remove later
+	connInfo := &connectionService.ConnectionInfo{
+		Endpoint: m.Endpoint,
+		Conn:     conn,
+	}
+	cs.Add(connInfo)
+
+	return nil
 }
 
 func httpHandlers(listener net.Listener) error {
@@ -47,6 +90,17 @@ func httpHandlers(listener net.Listener) error {
 	go func() {
 		rs.Start(8001)
 	}()
+
+	// First load endpoint
+	fmt.Println("First load endpoint after 2 seconds")
+	time.AfterFunc(2*time.Second, func() {
+		err := firstLoadEndpoint(ctx, gw_router, handler, cs)
+		if err != nil {
+			fmt.Println("Error first load: ", err)
+
+		}
+	})
+	//
 
 	demoService := demo.NewDemoService(db, ps, rs, cs)
 	demoService.Register(ctx, gw_router, cs)
