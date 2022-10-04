@@ -10,6 +10,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pingPb "github.com/quangghaa/grpc-demo/proto/ping"
 	pb "github.com/quangghaa/grpc-demo/proto/register"
+	"github.com/quangghaa/grpc-demo/service/demo/handler"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -20,6 +21,8 @@ type RegisterService struct {
 	Context context.Context
 
 	ConnService *ConnectionService
+
+	handler *handler.ApiHandler
 }
 
 var (
@@ -27,31 +30,44 @@ var (
 	PING_SERVICE_ENDPOINT = "localhost:8001"
 )
 
-func NewRegisterService() *RegisterService {
-	return &RegisterService{}
+func NewRegisterService(h *handler.ApiHandler) *RegisterService {
+	return &RegisterService{
+		handler: h,
+	}
 }
 
 func (r *RegisterService) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
 	endpoint := in.Host + ":" + in.Port
+
 	opts := []grpc.DialOption{
 		grpc.WithBlock(), // Block when calling Dial until the connection is really established
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
 	conn, err := grpc.Dial(endpoint, opts...)
-
-	fmt.Println("First pool id: ", r.ConnService.Id)
-	fmt.Println("Push connection to pool ===>")
-	r.ConnService.Add(conn)
-
 	if err != nil {
-		return nil, err
+		fmt.Println("Cannot Dial to endpoint: %s ", err.Error())
+		return &pb.RegisterReply{Message: "Cannot dial", Conns: []string{}}, nil
 	}
 
 	err = pingPb.RegisterPingHandler(r.Context, r.Router, conn)
 	if err != nil {
 		log.Fatalln("Failed to dial server: ", err)
 	}
+
+	// Save to db
+	connObj := &pb.Connection{
+		ServiceName: "Ping",
+		Endpoint:    endpoint,
+	}
+
+	_, err = r.handler.Connection_Create(connObj)
+	if err != nil {
+		fmt.Println("Cannot save to db: %s ", err.Error())
+	}
+
+	// Save to array, to remove later
+	r.ConnService.Add(conn)
 
 	return &pb.RegisterReply{Message: in.Host + ":" + in.Port, Conns: []string{}}, nil
 }
@@ -74,8 +90,6 @@ func (c *RegisterService) ScanConnection(ctx context.Context, in *pb.RegisterReq
 	go func() {
 		count := 1
 		for {
-			fmt.Println("Scan >> ", count)
-			fmt.Println("Check length >> ", len(c.ConnService.ConnPool))
 			count++
 			if len(c.ConnService.ConnPool) > 1 {
 				for i := 0; i < len(c.ConnService.ConnPool)-1; i++ {

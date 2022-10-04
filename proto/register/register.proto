@@ -39,7 +39,10 @@ message RegisterRequest {
 
 // The connection
 message Connection {
-    string conn = 1;
+    uint64 id = 1;
+    string service_name = 2;
+    string endpoint = 3;
+    string create_at = 4;
 }
 
 // The response message containing the greetings

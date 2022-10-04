@@ -8,7 +8,9 @@ import (
 	"net/http"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/quangghaa/grpc-demo/db"
 	"github.com/quangghaa/grpc-demo/service/demo"
+	"github.com/quangghaa/grpc-demo/service/demo/handler"
 )
 
 var (
@@ -23,6 +25,13 @@ type register struct {
 }
 
 func httpHandlers(listener net.Listener) error {
+	// load db
+	db, err := db.Init()
+	if err != nil {
+		fmt.Println("Cannot load database")
+		return err
+	}
+
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -31,14 +40,15 @@ func httpHandlers(listener net.Listener) error {
 
 	cs := demo.NewConnectionService("1")
 
+	handler := handler.NewApiHandler(db)
 	ps := demo.NewPingService()
-	rs := demo.NewRegisterService()
-	fmt.Printf("First: %v\n", rs.Router)
+	rs := demo.NewRegisterService(handler)
+
 	go func() {
 		rs.Start(8001)
 	}()
 
-	demoService := demo.NewDemoService(ps, rs, cs)
+	demoService := demo.NewDemoService(db, ps, rs, cs)
 	demoService.Register(ctx, gw_router, cs)
 
 	server := &http.Server{
